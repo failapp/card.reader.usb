@@ -114,10 +114,7 @@ shiftchrMap = {
     57: 'KEY_CAPSLOCK'
 }
 
-
-DATA_SIZE = 512
-
-
+#DATA_SIZE = 512
 
 dev = usb.core.find(idVendor=0x6352, idProduct=0x213a)
 ep = dev[0].interfaces()[0].endpoints()[0]
@@ -150,21 +147,16 @@ while 1:
         swiped = True
 
     except usb.core.USBError as e:
-
-        #print('data len -> ', len(data))
-        #print('e.args -> ', e.args[1])
-
+        
         if e.args[1] == ('Operation timed out') and swiped:
 
-            #print('data len -> ', len(data))
             #if len(data) < DATA_SIZE:
             if len(data) < emax:
-                #print("Bad swipe, try again. (%d bytes)" % len(data))
-                #print("Data: %s") % ''.join(map(chr, data))
-
+                
                 print("Bad swipe, try again. %d bytes" % len(data))
 
                 data = []
+                datalist = []
                 swiped = False
                 continue
             else:
@@ -192,8 +184,6 @@ for n in ndata:
     elif n[2] in shiftchrMap and n[0] == 2:
         sdata += shiftchrMap[n[2]]
 
-
-
-print('sdata -> ', sdata)
-
-
+#print('sdata -> ', sdata)
+card = sdata[14:22]
+print('card number -> ', card)
