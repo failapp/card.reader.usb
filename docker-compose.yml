@@ -1,0 +1,21 @@
+version: '3.3'
+
+services:
+  mqtt:
+    image: eclipse-mosquitto:1.6
+    container_name: mqtt
+    restart: unless-stopped
+    ports:
+      - 1883:1883
+      - 9001:9001
+    volumes:
+      - ./data/mosquitto/mosquitto-data:/mosquitto/data
+    networks:
+      - card-reader
+
+volumes:
+  mosquitto-data: {}
+
+networks:
+  card-reader:
+    driver: bridge

@@ -1,6 +1,11 @@
 import sys
 import usb.core
 import usb.util
+import paho.mqtt.publish as publish
+import json
+
+mqtt_host = "localhost"
+mqtt_topic = "sync/reader"
 
 chrMap = {
     4:  'a',
@@ -135,7 +140,7 @@ datalist = []
 swiped = False
 print("Please swipe your card...")
 
-while 1:
+while True:
     try:
         
         #data += dev.read(eaddr, emax, timeout=1000)
@@ -160,30 +165,36 @@ while 1:
                 swiped = False
                 continue
             else:
-                break   # we got it!
+                #break   # we got it!
+                print('data len -> ', len(data))
 
+                # create a list of 8 bit bytes and remove.. empty bytes
+                ndata = []
+                for d in datalist:
+                    if d.tolist() != [0, 0, 0, 0, 0, 0, 0, 0]:
+                        ndata.append(d.tolist())
 
-#enc_formats = ('ISO/ABA', 'AAMVA', 'CADL', 'Blank', 'Other', 'Undetermined', 'None')
-print('data len -> ', len(data))
-#print("Card Encoding Type: %s" % enc_formats[data[6]])
+                # parse over our bytes and create string to final return
+                sdata = ''
+                for n in ndata:
+                    # handle non shifted letters
+                    if n[2] in chrMap and n[0] == 0:
+                        sdata += chrMap[n[2]]
+                    # handle shifted letters
+                    elif n[2] in shiftchrMap and n[0] == 2:
+                        sdata += shiftchrMap[n[2]]
 
-# create a list of 8 bit bytes and remove
-# empty bytes
-ndata = []
-for d in datalist:
-    if d.tolist() != [0, 0, 0, 0, 0, 0, 0, 0]:
-        ndata.append(d.tolist())
+                #print('sdata -> ', sdata)
+                card = sdata[14:22]
+                #print('card number -> ', card)
+                data = []
+                datalist = []
+                swiped = False
 
-# parse over our bytes and create string to final return
-sdata = ''
-for n in ndata:
-    # handle non shifted letters
-    if n[2] in chrMap and n[0] == 0:
-        sdata += chrMap[n[2]]
-    # handle shifted letters
-    elif n[2] in shiftchrMap and n[0] == 2:
-        sdata += shiftchrMap[n[2]]
+                payload = {'cardNumber':card}
+                
+                publish.single(mqtt_topic, json.dumps(payload), hostname=mqtt_host)
+                print('[reader] message sent.. card number: %s' % payload)
 
-#print('sdata -> ', sdata)
-card = sdata[14:22]
-print('card number -> ', card)
+                
+
