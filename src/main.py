@@ -3,9 +3,12 @@ import usb.core
 import usb.util
 import paho.mqtt.publish as publish
 import json
+from os import environ
 
-mqtt_host = "localhost"
-mqtt_topic = "sync/reader"
+mqtt_host  = environ.get('MQTT_HOST', 'localhost')
+mqtt_topic = environ.get('MQTT_TOPIC', 'sync/reader')
+vendor_id  = environ.get('READER_USB_VENDOR_ID', '0x6352')
+product_id = environ.get('READER_USB_PRODUCT_ID', '0x213a')
 
 chrMap = {
     4:  'a',
@@ -119,9 +122,13 @@ shiftchrMap = {
     57: 'KEY_CAPSLOCK'
 }
 
-#DATA_SIZE = 512
+vendor_id = int(vendor_id, 16)
+product_id = int(product_id, 16)
 
-dev = usb.core.find(idVendor=0x6352, idProduct=0x213a)
+print('vendor_id %s, product_id %s' % (vendor_id, product_id))
+
+#dev = usb.core.find(idVendor=0x6352, idProduct=0x213a)
+dev = usb.core.find(idVendor=vendor_id, idProduct=product_id)
 ep = dev[0].interfaces()[0].endpoints()[0]
 i = dev[0].interfaces()[0].bInterfaceNumber
 
@@ -155,7 +162,6 @@ while True:
         
         if e.args[1] == ('Operation timed out') and swiped:
 
-            #if len(data) < DATA_SIZE:
             if len(data) < emax:
                 
                 print("Bad swipe, try again. %d bytes" % len(data))
@@ -166,35 +172,37 @@ while True:
                 continue
             else:
                 #break   # we got it!
-                print('data len -> ', len(data))
 
-                # create a list of 8 bit bytes and remove.. empty bytes
-                ndata = []
-                for d in datalist:
-                    if d.tolist() != [0, 0, 0, 0, 0, 0, 0, 0]:
-                        ndata.append(d.tolist())
+                try:
+                    #print('data len -> ', len(data))
+                    # create a list of 8 bit bytes and remove.. empty bytes
+                    ndata = []
+                    for d in datalist:
+                        if d.tolist() != [0, 0, 0, 0, 0, 0, 0, 0]:
+                            ndata.append(d.tolist())
 
-                # parse over our bytes and create string to final return
-                sdata = ''
-                for n in ndata:
-                    # handle non shifted letters
-                    if n[2] in chrMap and n[0] == 0:
-                        sdata += chrMap[n[2]]
-                    # handle shifted letters
-                    elif n[2] in shiftchrMap and n[0] == 2:
-                        sdata += shiftchrMap[n[2]]
+                    # parse over our bytes and create string to final return
+                    sdata = ''
+                    for n in ndata:
+                        # handle non shifted letters
+                        if n[2] in chrMap and n[0] == 0:
+                            sdata += chrMap[n[2]]
+                        # handle shifted letters
+                        elif n[2] in shiftchrMap and n[0] == 2:
+                            sdata += shiftchrMap[n[2]]
 
-                #print('sdata -> ', sdata)
-                card = sdata[14:22]
-                #print('card number -> ', card)
-                data = []
-                datalist = []
-                swiped = False
+                    #print('sdata -> ', sdata)
+                    card = sdata[14:22]
+                    print('card number -> ', card)
+                    data = []
+                    datalist = []
+                    swiped = False
 
-                payload = {'cardNumber':card}
-                
-                publish.single(mqtt_topic, json.dumps(payload), hostname=mqtt_host)
-                print('[reader] message sent.. card number: %s' % payload)
+                    payload = {'cardNumber':card}
+                    publish.single(mqtt_topic, json.dumps(payload), hostname=mqtt_host)
+                    print('[reader] message sent.. card number: %s' % payload)
 
-                
+                except Exception as e:
+                    print ("[x] error in message emitter.. {}".format(e))
+                    continue
 
