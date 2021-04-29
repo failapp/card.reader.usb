@@ -55,6 +55,7 @@ source /home/user/.bashrc
 
 ## docker ..
 ```
+// contenedor imagen control lector usb
 docker run -itd --name card-reader --privileged -e MQTT_HOST='172.21.0.2' \
 	-v /var/run/dbus:/var/run/dbus -v /dev/bus/usb:/dev/bus/usb \
 	card-reader:1.0
@@ -63,5 +64,9 @@ docker run -itd --name card-reader --privileged -e MQTT_HOST='172.21.0.2' \
 docker run -it --name card-reader --privileged -e MQTT_HOST='192.168.20.10' \
 	-v /var/run/dbus:/var/run/dbus -v /dev/bus/usb:/dev/bus/usb \
 	card-reader:1.1
+
+// contenedor imagen control modulo rele
+docker run --name rele --privileged --device /dev/mem --device /dev/gpiomem -e MQTT_HOST='192.168.20.50' -it relay:1.0
+
 
 ```
